@@ -1,4 +1,5 @@
 const { request, response } = require('express');
+const { isValidMongoId } = require('../helpers/mongo');
 const Quiz = require('../models/quiz');
 
 const createQuiz = async(req = request, res = response) => {
@@ -43,8 +44,57 @@ const createQuiz = async(req = request, res = response) => {
     })
     throw new Error(error);
   }
-}
+};
+
+const getQuiz = async(req = request, res = response) => {
+  try {
+    const idQuiz = req.query.id;
+    if(!isValidMongoId(idQuiz)) {
+      return res.status(400).json({
+        ok: false,
+        msg: 'Provide a valid id'
+      });
+    }
+    const quiz = await Quiz.findById(idQuiz);
+    if(!quiz) {
+      return res.status(404).json({
+        ok: false,
+        msg: 'Quiz not found'
+      });
+    }
+    res.status(200).json({
+      ok: true,
+      quiz
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      msg: 'Talk to Admin'
+    })
+    throw new Error(error);
+  }
+};
+
+const getQuizzes = async(req = request, res = response) => {
+  try {
+    const type = req.query.type;
+    const filter = (type) ? { 'typeQuiz': type } : {};
+    const quizzes = await Quiz.find(filter).limit(10);
+    res.status(200).json({
+      ok: true,
+      quizzes
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      msg: 'Talk to Admin'
+    })
+    throw new Error(error);
+  }
+};
 
 module.exports = {
   createQuiz,
+  getQuiz,
+  getQuizzes
 };
