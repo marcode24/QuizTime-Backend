@@ -93,8 +93,68 @@ const getQuizzes = async(req = request, res = response) => {
   }
 };
 
+const answerQuiz = async(req = request, res = response) => {
+  try {
+    const idQuiz = req.params.idQuiz;
+    const answers = req.body.answers;
+    if(!isValidMongoId(idQuiz)) {
+      return res.status(400).json({
+        ok: false,
+        msg: 'Provide a valid id'
+      });
+    }
+
+    // lean(): get only properties 'pure'
+    const [quiz, quizTemp] = await Promise.all([
+      Quiz.findById(idQuiz, 'statistics questions'),
+      Quiz.findById(idQuiz, 'questions -_id').lean()
+    ]);
+    const { questions } = quizTemp;
+
+    // verify which answers are right or wrong
+    questions.map(el => el.status = 'wrong');
+    answers.map(el => el.reviewed = false);
+    let wrong = 0;
+    questions.forEach((item, index) => {
+      // use every to 'break' loop
+      answers.every((ans, i) => {
+        if(item.noQuestion === ans.noQuestion && !ans.reviewed) {
+          if(item.correctAnswer === ans.answer) {
+            questions[index].status = 'right';
+            answers[i].reviewed = true;
+            return false;
+          } else {
+            wrong++;
+            answers[i].reviewed = true;
+            return false;
+          }
+        } else {
+          return true;
+        }
+      })
+    });
+
+    // change statistics
+    quiz.statistics.answered++;
+    (wrong > 0) ? quiz.statistics.wrong++ : quiz.statistics.right++;
+
+    await quiz.save();
+    res.status(200).json({
+      ok: true,
+      questions
+    });
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      msg: 'Talk to Admin'
+    })
+    throw new Error(error);
+  }
+};
+
 module.exports = {
   createQuiz,
   getQuiz,
-  getQuizzes
+  getQuizzes,
+  answerQuiz
 };
