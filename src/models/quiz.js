@@ -6,6 +6,10 @@ const quizSchema = new Schema({
     default: 'anonymous',
     required: false
   },
+  title: {
+    type: String,
+    required: true,
+  },
   questions: [{
     noQuestion: {
       type: Number,
